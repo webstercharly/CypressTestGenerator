@@ -11,18 +11,19 @@ Before running the generator script, you'll need to define your test scenarios. 
 2. **Locate the Scenario Definition**: Within the file, find the scenario definition section. This might be an object, array, or function call where you define the steps of your test scenario. It typically looks like this (example provided for illustrative purposes):
 
    ```typescript
-   const scenarios = [
-     {
-       description: "Test Login Functionality",
-       steps: [
-         { action: "navigate", url: "https://example.com/login" },
-         { action: "type", selector: "#username", value: "testuser" },
-         { action: "type", selector: "#password", value: "password" },
-         { action: "click", selector: "#submit" },
-         { action: "assert", selector: "#loginSuccess", expected: "visible" },
-       ],
-     },
-   ];
+   const scenario = {
+     name: `visit example website`,
+     given: '<visit_url http://example.com>',
+     when: [
+       '<input_username value testuser>',
+       '<if_welcome_message exists>',
+       '<click_#submit>',
+       '<if_end>'
+     ],
+     then: [
+       "<assert_page_title has text Welcome to Example>",
+     ],
+   };
    ```
 
 3. **Edit Your Scenarios**: Modify the existing scenario or add new ones according to your testing requirements. Each scenario should outline the steps to be performed during the test, such as navigating to a page, entering text, clicking buttons, and making assertions about the state of the application.
