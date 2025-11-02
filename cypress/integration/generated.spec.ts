@@ -1,13 +1,16 @@
 /// <reference types="cypress" />
-describe("visit example website", () => {
-  it("<visit_url http://example.com>", () => {
-    cy.visit("http://example.com");
 
-    cy.get("input.username").type("testuser");
-    if (cy.get("welcome_message").should("exist")) {
-      cy.get("#submit").click();
-    }
-
-    cy.get("page_title").should("contain.text", "Welcome to Example");
+describe("User Login Flow", () => {
+  it("Test user can login with valid credentials", () => {
+    cy.visit("http://example.com/login");
+    cy.get("#username").type("testuser");
+    cy.get("#password").type("password123");
+    cy.get("#login-button").click();
+    cy.url().should("eq", "http://example.com/dashboard");
+    cy.get(".welcome-message").should("be.visible");
+    cy.get(".welcome-message").should(
+      "contain.text",
+      "Welcome back, testuser!"
+    );
   });
 });

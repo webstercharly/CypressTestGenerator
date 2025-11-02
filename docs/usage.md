@@ -1,55 +1,286 @@
-# Usage Guidelines
+# Usage Guide
 
-To incorporate instructions for editing the scenario object inside the `generateCypressTest.ts` file into the usage guide, I'll add a section that explains how users can define their test scenarios. This guidance is based on the assumption that the `generateCypressTest.ts` file contains an editable scenario object or function where users can input their specific test cases.
+## Overview
 
-## Editing Test Scenarios
+CypressTestGenerator allows you to create Cypress tests using simple, object-based step definitions. This approach is designed to be:
 
-Before running the generator script, you'll need to define your test scenarios. Here's how to edit the scenario object inside the `generateCypressTest.ts` file:
+- **UI-friendly**: Easy to generate from a web interface
+- **Readable**: No complex syntax to learn
+- **Maintainable**: Clear structure that's easy to modify
+- **Type-safe**: Full TypeScript support
 
-1. **Open `generateCypressTest.ts`**: Locate and open the `generateCypressTest.ts` file in your project directory.
+## Quick Start
 
-2. **Locate the Scenario Definition**: Within the file, find the scenario definition section. This might be an object, array, or function call where you define the steps of your test scenario. It typically looks like this (example provided for illustrative purposes):
+### 1. Define Your Scenario
 
-   ```typescript
-   const scenario = {
-     name: `visit example website`,
-     given: '<visit_url http://example.com>',
-     when: [
-       '<input_username value testuser>',
-       '<if_welcome_message exists>',
-       '<click_#submit>',
-       '<if_end>'
-     ],
-     then: [
-       "<assert_page_title has text Welcome to Example>",
-     ],
-   };
-   ```
+Open `generateCypressTest.ts` and locate the scenario object. A scenario consists of:
+- **name**: A descriptive name for your test
+- **description** (optional): What the test validates
+- **steps**: An array of step objects
 
-3. **Edit Your Scenarios**: Modify the existing scenario or add new ones according to your testing requirements. Each scenario should outline the steps to be performed during the test, such as navigating to a page, entering text, clicking buttons, and making assertions about the state of the application.
+Example:
 
-4. **Save Your Changes**: After editing or adding your scenarios, save the file.
+```typescript
+const scenario = {
+  name: 'User Login Flow',
+  description: 'Test user can login with valid credentials',
+  steps: [
+    { type: 'navigate', url: 'http://example.com/login' },
+    { type: 'fillInput', selector: '#username', value: 'testuser' },
+    { type: 'fillInput', selector: '#password', value: 'password123' },
+    { type: 'click', selector: '#login-button' },
+    { type: 'assertUrl', url: 'http://example.com/dashboard' },
+    { type: 'assertVisible', selector: '.welcome-message' },
+    { type: 'assertText', selector: '.welcome-message', text: 'Welcome back, testuser!' },
+  ],
+};
+```
 
-## Compiling and Running the Generator
+### 2. Run the Generator
 
-After editing your test scenarios, follow the steps outlined in the previous sections to compile your TypeScript code and run the generator script:
+```bash
+npm run tsc    # Compile TypeScript
+npm start      # Generate Cypress test
+```
 
-1. Compile TypeScript to JavaScript:
+The generator will create a Cypress test file at `./cypress/integration/generated.spec.ts`.
 
-   ```bash
-   npm run tsc
-   ```
+## Available Step Types
 
-2. Run the generator to create your Cypress test files:
+### Navigation
 
-   ```bash
-   npm start
-   ```
+```typescript
+// Navigate to a URL
+{ type: 'navigate', url: 'https://example.com' }
+```
 
-## Tips for Writing Scenarios
+### Input Actions
 
-- **Be Specific**: Clearly define the actions and expectations for each step to ensure your tests are precise and understandable.
-- **Use Comments**: Add comments to your scenario definitions to explain complex steps or logic, making your tests easier to maintain and understand by others.
-- **Review Cypress Documentation**: For complex interactions or assertions, refer to the [Cypress documentation](https://docs.cypress.io) for guidance on commands and best practices.
+```typescript
+// Fill an input field
+{ type: 'fillInput', selector: '#email', value: 'user@example.com' }
 
-By following these instructions, you can easily define and edit test scenarios for your application, leveraging the power of Cypress and your scenario generator to streamline test creation.
+// Clear an input field
+{ type: 'clearInput', selector: '#search' }
+```
+
+### Click Actions
+
+```typescript
+// Click an element
+{ type: 'click', selector: '.submit-button' }
+
+// Double-click
+{ type: 'doubleClick', selector: '.item' }
+
+// Right-click
+{ type: 'rightClick', selector: '.context-menu-trigger' }
+```
+
+### Select & Checkbox
+
+```typescript
+// Select from dropdown
+{ type: 'select', selector: '#country', value: 'USA' }
+
+// Check a checkbox
+{ type: 'check', selector: '#terms' }
+
+// Uncheck a checkbox
+{ type: 'uncheck', selector: '#newsletter' }
+```
+
+### Wait Actions
+
+```typescript
+// Wait for milliseconds
+{ type: 'wait', milliseconds: 2000 }
+
+// Wait for element (with optional timeout)
+{ type: 'waitForSelector', selector: '.loading-complete', timeout: 5000 }
+```
+
+### Visibility Assertions
+
+```typescript
+// Assert element is visible
+{ type: 'assertVisible', selector: '.success-message' }
+
+// Assert element is hidden
+{ type: 'assertHidden', selector: '.error-message' }
+
+// Assert element exists (in DOM but may not be visible)
+{ type: 'assertExists', selector: '#hidden-field' }
+
+// Assert element doesn't exist
+{ type: 'assertNotExists', selector: '.removed-element' }
+```
+
+### Text Assertions
+
+```typescript
+// Assert element contains text
+{ type: 'assertText', selector: '.title', text: 'Welcome' }
+
+// Assert element has exact text
+{ type: 'assertExactText', selector: '.count', text: '5' }
+
+// Assert input/select value
+{ type: 'assertValue', selector: '#email', value: 'user@example.com' }
+```
+
+### State Assertions
+
+```typescript
+// Assert element is enabled
+{ type: 'assertEnabled', selector: '#submit-button' }
+
+// Assert element is disabled
+{ type: 'assertDisabled', selector: '#disabled-button' }
+
+// Assert checkbox is checked
+{ type: 'assertChecked', selector: '#agree' }
+
+// Assert checkbox is unchecked
+{ type: 'assertUnchecked', selector: '#disagree' }
+
+// Assert element has focus
+{ type: 'assertFocused', selector: '#active-input' }
+```
+
+### Attribute Assertions
+
+```typescript
+// Assert element has attribute with value
+{ type: 'assertAttribute', selector: 'a', attribute: 'href', value: '/home' }
+
+// Assert element has CSS class
+{ type: 'assertClass', selector: '.button', className: 'active' }
+
+// Assert element has CSS property
+{ type: 'assertCss', selector: '.header', property: 'color', value: 'rgb(255, 0, 0)' }
+```
+
+### URL Assertions
+
+```typescript
+// Assert exact URL
+{ type: 'assertUrl', url: 'https://example.com/dashboard' }
+
+// Assert URL contains text
+{ type: 'assertUrlContains', text: '/dashboard' }
+```
+
+### Other Assertions
+
+```typescript
+// Assert alert text
+{ type: 'assertAlert', text: 'Are you sure?' }
+
+// Assert element count
+{ type: 'assertCount', selector: '.list-item', count: 5 }
+```
+
+### Scroll Actions
+
+```typescript
+// Scroll element into view
+{ type: 'scrollTo', selector: '#footer' }
+
+// Scroll to top
+{ type: 'scrollToTop' }
+
+// Scroll to bottom
+{ type: 'scrollToBottom' }
+```
+
+### Utility Actions
+
+```typescript
+// Take screenshot
+{ type: 'screenshot', name: 'login-page' }
+
+// Custom Cypress code (for advanced users)
+{ type: 'custom', code: "cy.get('.custom').invoke('show')" }
+```
+
+## Complete Example
+
+```typescript
+const scenario = {
+  name: 'E-commerce Checkout',
+  description: 'Test complete purchase flow',
+  steps: [
+    // Navigate to product page
+    { type: 'navigate', url: 'https://shop.example.com/products/laptop' },
+
+    // Add to cart
+    { type: 'click', selector: '.add-to-cart' },
+    { type: 'assertVisible', selector: '.cart-notification' },
+
+    // Go to checkout
+    { type: 'click', selector: '.cart-icon' },
+    { type: 'assertUrl', url: 'https://shop.example.com/cart' },
+    { type: 'click', selector: '.checkout-button' },
+
+    // Fill shipping info
+    { type: 'fillInput', selector: '#name', value: 'John Doe' },
+    { type: 'fillInput', selector: '#email', value: 'john@example.com' },
+    { type: 'fillInput', selector: '#address', value: '123 Main St' },
+    { type: 'select', selector: '#country', value: 'USA' },
+
+    // Submit order
+    { type: 'check', selector: '#terms' },
+    { type: 'click', selector: '#submit-order' },
+
+    // Verify success
+    { type: 'waitForSelector', selector: '.success-message', timeout: 5000 },
+    { type: 'assertText', selector: '.success-message', text: 'Order placed successfully!' },
+    { type: 'screenshot', name: 'order-confirmation' },
+  ],
+};
+```
+
+## Building a UI
+
+This step-based approach is perfect for building a UI where users can:
+
+1. **Select step type from dropdown** - All types are listed in `stepGenerators`
+2. **Fill in parameters via form fields** - Each step type has specific required fields
+3. **Reorder steps** - Simple array manipulation
+4. **Save/load scenarios** - JSON-compatible structure
+5. **Preview generated code** - Call `generateCypressTest(scenario)`
+
+Example UI workflow:
+```
+1. User clicks "Add Step"
+2. Dropdown shows: navigate, fillInput, click, assertVisible, etc.
+3. User selects "fillInput"
+4. Form shows fields: selector, value
+5. User enters: selector="#email", value="test@example.com"
+6. Step is added to scenario.steps array
+```
+
+## Validation
+
+The generator automatically validates:
+- ✓ Scenario has a name
+- ✓ Steps array is not empty
+- ✓ Each step has a valid type
+- ✓ Required parameters are present
+- ✓ Clear error messages for debugging
+
+## Tips
+
+- **Use meaningful selectors**: Prefer IDs and data attributes over complex CSS selectors
+- **Group related steps**: Keep login, navigation, and assertions organized
+- **Add descriptions**: Help others understand what each scenario tests
+- **Take screenshots**: Document important states with `screenshot` steps
+- **Start simple**: Build basic flows first, then add complexity
+
+## Next Steps
+
+- Review generated tests in `./cypress/integration/generated.spec.ts`
+- Run tests with Cypress: `npx cypress open`
+- Build a web UI to generate scenarios visually
+- Integrate with CI/CD for automated testing
