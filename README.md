@@ -1,13 +1,15 @@
-# CypressTestGenerator
+# Multi-Framework Test Generator
 
 ## Overview
 
-CypressTestGenerator is a tool designed to create Cypress tests using simple, object-based step definitions. It's perfect for building UI-driven test builders (similar to Pingdom) where non-technical users can visually construct synthetic tests without writing code.
+A **framework-agnostic** test generator that creates automated tests for **Cypress, Playwright, and more** from simple, object-based step definitions. Perfect for building UI-driven test builders (similar to Pingdom) where non-technical users can visually construct synthetic tests without writing code.
 
 **Key Advantages:**
+- **Multi-Framework**: Write once, generate tests for Cypress, Playwright, Puppeteer, Selenium, etc.
 - **UI-Friendly**: Steps are simple JSON objects that can be generated from dropdown menus and form inputs
 - **No Syntax to Learn**: Clean, readable structure - no angle brackets, no parsing
 - **Type-Safe**: Full TypeScript support with clear interfaces
+- **Framework-Agnostic Architecture**: Easily add support for new frameworks
 - **Maintainable**: Easy to extend with new step types
 
 ## Quick Example
@@ -30,7 +32,36 @@ const scenario = {
 };
 ```
 
-This generates clean, executable Cypress code automatically.
+### Generate for Multiple Frameworks
+
+The **same scenario** generates tests for different frameworks:
+
+```typescript
+import { TestGenerator } from './core/generator';
+import { CypressAdapter, PlaywrightAdapter } from './adapters';
+
+// Generate Cypress test
+new TestGenerator(new CypressAdapter())
+  .generateFile(scenario, './cypress/integration/test.spec.ts');
+
+// Generate Playwright test
+new TestGenerator(new PlaywrightAdapter())
+  .generateFile(scenario, './playwright/tests/test.spec.ts');
+```
+
+**Cypress Output:**
+```javascript
+cy.visit('http://example.com/login');
+cy.get('#username').type('testuser');
+cy.get('.welcome-message').should('contain.text', 'Welcome back!');
+```
+
+**Playwright Output:**
+```javascript
+await page.goto('http://example.com/login');
+await page.locator('#username').fill('testuser');
+await expect(page.locator('.welcome-message')).toContainText('Welcome back!');
+```
 
 ## Features
 
@@ -53,7 +84,7 @@ npm install
 
 ### Define a Scenario
 
-Edit `generateCypressTest.ts` and modify the scenario object:
+Edit `index.ts` and modify the scenario object:
 
 ```typescript
 const scenario = {
@@ -66,14 +97,25 @@ const scenario = {
 };
 ```
 
-### Generate Cypress Test
+### Generate Tests
 
 ```bash
-npm run tsc    # Compile TypeScript
-npm start      # Generate test file
+npm run generate    # Build and generate tests for all configured frameworks
 ```
 
-The generated test will be written to `./cypress/integration/generated.spec.ts`.
+This will generate tests for **both Cypress and Playwright**:
+- Cypress: `./cypress/integration/generated.spec.ts`
+- Playwright: `./playwright/tests/generated.spec.ts`
+
+### Generate for Specific Framework
+
+```typescript
+import { TestGenerator } from './core/generator';
+import { CypressAdapter } from './adapters/cypress.adapter';
+
+const generator = new TestGenerator(new CypressAdapter());
+generator.generateFile(scenario, './output/test.spec.ts');
+```
 
 ## Available Step Types
 
@@ -175,9 +217,57 @@ const scenario = {
 };
 ```
 
+## Adding a New Framework
+
+The architecture makes it easy to add support for new frameworks. Here's how to add Puppeteer, Selenium, WebdriverIO, etc.:
+
+### Step 1: Create Adapter
+
+Create `adapters/yourframework.adapter.ts`:
+
+```typescript
+import { BaseFrameworkAdapter } from '../core/adapter';
+import { Step, Scenario } from '../core/types';
+
+export class YourFrameworkAdapter extends BaseFrameworkAdapter {
+  name = 'yourframework';
+  fileExtension = '.test.ts';
+
+  protected stepGenerators: Record<string, (step: Step) => string> = {
+    navigate: (step) => `// Your framework's navigation code`,
+    click: (step) => `// Your framework's click code`,
+    assertVisible: (step) => `// Your framework's assertion code`,
+    // ... implement all 30+ step types
+  };
+
+  getFileHeader(): string {
+    return `// Your framework's imports\n`;
+  }
+
+  wrapInTestStructure(scenario: Scenario, stepsCode: string): string {
+    return `// Your framework's test structure\n${stepsCode}`;
+  }
+}
+```
+
+### Step 2: Use It
+
+```typescript
+import { TestGenerator } from './core/generator';
+import { YourFrameworkAdapter } from './adapters/yourframework.adapter';
+
+const generator = new TestGenerator(new YourFrameworkAdapter());
+generator.generateFile(scenario, './tests/generated.test.ts');
+```
+
+That's it! The same scenario now generates tests for your framework.
+
+See [Architecture Documentation](docs/architecture.md) for detailed information about the framework-agnostic design.
+
 ## Contributing
 
 Contributions are welcome! Areas where help is needed:
+- Additional framework adapters (Puppeteer, Selenium, WebdriverIO, etc.)
 - Additional step types
 - Validation improvements
 - Example UI implementations

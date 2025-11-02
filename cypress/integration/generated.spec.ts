@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
-describe("User Login Flow with Conditional Logic", () => {
-  it("Test user can login and handle optional cookie banner", () => {
+describe("User Login Flow", () => {
+  it("Test user can login with valid credentials", () => {
     cy.visit("http://example.com/login");
     cy.get("body").then(($body) => {
       if ($body.find(".cookie-banner").length > 0) {
@@ -14,10 +14,7 @@ describe("User Login Flow with Conditional Logic", () => {
     cy.url().then((url) => {
       if (url.includes("/dashboard")) {
         cy.get(".welcome-message").should("be.visible");
-        cy.get(".welcome-message").should(
-          "contain.text",
-          "Welcome back, testuser!"
-        );
+        cy.get(".welcome-message").should("contain.text", "Welcome back!");
       } else {
         cy.get(".error-message").should("be.visible");
         cy.screenshot("login-error");
