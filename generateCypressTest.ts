@@ -8,6 +8,9 @@ import * as prettier from 'prettier';
  */
 interface Step {
   type: string;
+  steps?: Step[];  // For conditional blocks
+  thenSteps?: Step[];  // For if-then-else
+  elseSteps?: Step[];  // For if-then-else
   [key: string]: any;
 }
 
@@ -85,6 +88,108 @@ const stepGenerators: Record<string, (step: Step) => string> = {
 
   // Custom Cypress command (for advanced users)
   custom: (step) => step.code,
+
+  // Conditional execution - if element exists
+  ifExists: (step) => {
+    const thenCode = step.thenSteps ? generateStepsCode(step.thenSteps, 6) : '';
+    const elseCode = step.elseSteps ? generateStepsCode(step.elseSteps, 6) : '';
+
+    return `cy.get('body').then(($body) => {
+      if ($body.find('${step.selector}').length > 0) {
+${thenCode}
+      }${elseCode ? ` else {
+${elseCode}
+      }` : ''}
+    });`;
+  },
+
+  // Conditional execution - if element visible
+  ifVisible: (step) => {
+    const thenCode = step.thenSteps ? generateStepsCode(step.thenSteps, 6) : '';
+    const elseCode = step.elseSteps ? generateStepsCode(step.elseSteps, 6) : '';
+
+    return `cy.get('body').then(($body) => {
+      if ($body.find('${step.selector}:visible').length > 0) {
+${thenCode}
+      }${elseCode ? ` else {
+${elseCode}
+      }` : ''}
+    });`;
+  },
+
+  // Conditional execution - if element contains text
+  ifContainsText: (step) => {
+    const thenCode = step.thenSteps ? generateStepsCode(step.thenSteps, 6) : '';
+    const elseCode = step.elseSteps ? generateStepsCode(step.elseSteps, 6) : '';
+
+    return `cy.get('${step.selector}').then(($el) => {
+      if ($el.text().includes('${step.text}')) {
+${thenCode}
+      }${elseCode ? ` else {
+${elseCode}
+      }` : ''}
+    });`;
+  },
+
+  // Conditional execution - if URL contains text
+  ifUrlContains: (step) => {
+    const thenCode = step.thenSteps ? generateStepsCode(step.thenSteps, 6) : '';
+    const elseCode = step.elseSteps ? generateStepsCode(step.elseSteps, 6) : '';
+
+    return `cy.url().then((url) => {
+      if (url.includes('${step.text}')) {
+${thenCode}
+      }${elseCode ? ` else {
+${elseCode}
+      }` : ''}
+    });`;
+  },
+
+  // Conditional execution - if element has attribute
+  ifHasAttribute: (step) => {
+    const thenCode = step.thenSteps ? generateStepsCode(step.thenSteps, 6) : '';
+    const elseCode = step.elseSteps ? generateStepsCode(step.elseSteps, 6) : '';
+
+    return `cy.get('${step.selector}').then(($el) => {
+      if ($el.attr('${step.attribute}') === '${step.value}') {
+${thenCode}
+      }${elseCode ? ` else {
+${elseCode}
+      }` : ''}
+    });`;
+  },
+
+  // Conditional execution - if element has class
+  ifHasClass: (step) => {
+    const thenCode = step.thenSteps ? generateStepsCode(step.thenSteps, 6) : '';
+    const elseCode = step.elseSteps ? generateStepsCode(step.elseSteps, 6) : '';
+
+    return `cy.get('${step.selector}').then(($el) => {
+      if ($el.hasClass('${step.className}')) {
+${thenCode}
+      }${elseCode ? ` else {
+${elseCode}
+      }` : ''}
+    });`;
+  },
+};
+
+/**
+ * Helper function to generate code for nested steps
+ */
+function generateStepsCode(steps: Step[], indent: number = 4): string {
+  const indentStr = ' '.repeat(indent);
+  return steps
+    .map((step) => {
+      const generator = stepGenerators[step.type];
+      if (!generator) {
+        throw new Error(`Unknown step type: ${step.type}`);
+      }
+      const code = generator(step);
+      // Handle multi-line code from conditionals
+      return code.split('\n').map(line => `${indentStr}${line}`).join('\n');
+    })
+    .join('\n');
 };
 
 /**
@@ -136,6 +241,12 @@ function validateStep(step: Step, index: number): void {
     assertCount: ['selector', 'count'],
     scrollTo: ['selector'],
     custom: ['code'],
+    ifExists: ['selector', 'thenSteps'],
+    ifVisible: ['selector', 'thenSteps'],
+    ifContainsText: ['selector', 'text', 'thenSteps'],
+    ifUrlContains: ['text', 'thenSteps'],
+    ifHasAttribute: ['selector', 'attribute', 'value', 'thenSteps'],
+    ifHasClass: ['selector', 'className', 'thenSteps'],
   };
 
   const required = requiredParams[step.type] || [];
@@ -145,6 +256,19 @@ function validateStep(step: Step, index: number): void {
         `Step at index ${index} (type: '${step.type}') is missing required parameter '${param}'`
       );
     }
+  }
+
+  // Recursively validate nested steps in conditionals
+  if (step.thenSteps && Array.isArray(step.thenSteps)) {
+    step.thenSteps.forEach((nestedStep, nestedIndex) => {
+      validateStep(nestedStep, nestedIndex);
+    });
+  }
+
+  if (step.elseSteps && Array.isArray(step.elseSteps)) {
+    step.elseSteps.forEach((nestedStep, nestedIndex) => {
+      validateStep(nestedStep, nestedIndex);
+    });
   }
 }
 
@@ -173,12 +297,7 @@ function validateScenario(scenario: Scenario): void {
 function generateCypressTest(scenario: Scenario): string {
   validateScenario(scenario);
 
-  const stepsCode = scenario.steps
-    .map((step) => {
-      const generator = stepGenerators[step.type];
-      return `    ${generator(step)}`;
-    })
-    .join('\n');
+  const stepsCode = generateStepsCode(scenario.steps, 4);
 
   const description = scenario.description || scenario.name;
 
@@ -211,16 +330,37 @@ function writeSpecFile(scenario: Scenario, outputPath: string): void {
  * Example scenario - this would be generated by a UI in production
  */
 const scenario: Scenario = {
-  name: 'User Login Flow',
-  description: 'Test user can login with valid credentials',
+  name: 'User Login Flow with Conditional Logic',
+  description: 'Test user can login and handle optional cookie banner',
   steps: [
     { type: 'navigate', url: 'http://example.com/login' },
+
+    // If cookie banner exists, accept it
+    {
+      type: 'ifExists',
+      selector: '.cookie-banner',
+      thenSteps: [
+        { type: 'click', selector: '.accept-cookies' },
+      ],
+    },
+
     { type: 'fillInput', selector: '#username', value: 'testuser' },
     { type: 'fillInput', selector: '#password', value: 'password123' },
     { type: 'click', selector: '#login-button' },
-    { type: 'assertUrl', url: 'http://example.com/dashboard' },
-    { type: 'assertVisible', selector: '.welcome-message' },
-    { type: 'assertText', selector: '.welcome-message', text: 'Welcome back, testuser!' },
+
+    // Check if login was successful or failed
+    {
+      type: 'ifUrlContains',
+      text: '/dashboard',
+      thenSteps: [
+        { type: 'assertVisible', selector: '.welcome-message' },
+        { type: 'assertText', selector: '.welcome-message', text: 'Welcome back, testuser!' },
+      ],
+      elseSteps: [
+        { type: 'assertVisible', selector: '.error-message' },
+        { type: 'screenshot', name: 'login-error' },
+      ],
+    },
   ],
 };
 

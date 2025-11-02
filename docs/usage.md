@@ -194,6 +194,102 @@ The generator will create a Cypress test file at `./cypress/integration/generate
 { type: 'scrollToBottom' }
 ```
 
+### Conditional Logic
+
+Conditional steps allow you to execute actions based on runtime conditions. They support both `if-then` and `if-then-else` patterns.
+
+```typescript
+// If element exists, click it
+{
+  type: 'ifExists',
+  selector: '.cookie-banner',
+  thenSteps: [
+    { type: 'click', selector: '.accept-cookies' }
+  ]
+}
+
+// If element exists with else clause
+{
+  type: 'ifExists',
+  selector: '.login-button',
+  thenSteps: [
+    { type: 'click', selector: '.login-button' }
+  ],
+  elseSteps: [
+    { type: 'assertVisible', selector: '.already-logged-in' }
+  ]
+}
+
+// If element is visible (not just in DOM)
+{
+  type: 'ifVisible',
+  selector: '.modal',
+  thenSteps: [
+    { type: 'click', selector: '.close-modal' }
+  ]
+}
+
+// If element contains specific text
+{
+  type: 'ifContainsText',
+  selector: '.status',
+  text: 'Active',
+  thenSteps: [
+    { type: 'click', selector: '.deactivate-button' }
+  ],
+  elseSteps: [
+    { type: 'click', selector: '.activate-button' }
+  ]
+}
+
+// If URL contains text
+{
+  type: 'ifUrlContains',
+  text: '/dashboard',
+  thenSteps: [
+    { type: 'assertVisible', selector: '.user-profile' }
+  ],
+  elseSteps: [
+    { type: 'navigate', url: 'http://example.com/dashboard' }
+  ]
+}
+
+// If element has specific attribute value
+{
+  type: 'ifHasAttribute',
+  selector: '#submit',
+  attribute: 'disabled',
+  value: 'disabled',
+  thenSteps: [
+    { type: 'assertVisible', selector: '.validation-error' }
+  ]
+}
+
+// If element has CSS class
+{
+  type: 'ifHasClass',
+  selector: '.button',
+  className: 'active',
+  thenSteps: [
+    { type: 'click', selector: '.button' }
+  ]
+}
+```
+
+**Conditional Step Types:**
+- `ifExists` - Check if element exists in DOM
+- `ifVisible` - Check if element is visible
+- `ifContainsText` - Check if element contains text
+- `ifUrlContains` - Check if URL contains text
+- `ifHasAttribute` - Check if element has attribute with value
+- `ifHasClass` - Check if element has CSS class
+
+**Important Notes:**
+- Conditionals use Cypress `.then()` callbacks under the hood
+- You can nest steps inside `thenSteps` and `elseSteps` arrays
+- `elseSteps` is optional - use only if you need else logic
+- Conditionals work correctly with Cypress's async nature
+
 ### Utility Actions
 
 ```typescript
@@ -209,10 +305,19 @@ The generator will create a Cypress test file at `./cypress/integration/generate
 ```typescript
 const scenario = {
   name: 'E-commerce Checkout',
-  description: 'Test complete purchase flow',
+  description: 'Test complete purchase flow with conditional logic',
   steps: [
     // Navigate to product page
     { type: 'navigate', url: 'https://shop.example.com/products/laptop' },
+
+    // Handle cookie banner if it appears
+    {
+      type: 'ifExists',
+      selector: '.cookie-banner',
+      thenSteps: [
+        { type: 'click', selector: '.accept-cookies' },
+      ],
+    },
 
     // Add to cart
     { type: 'click', selector: '.add-to-cart' },
@@ -222,6 +327,18 @@ const scenario = {
     { type: 'click', selector: '.cart-icon' },
     { type: 'assertUrl', url: 'https://shop.example.com/cart' },
     { type: 'click', selector: '.checkout-button' },
+
+    // Check if user is logged in, otherwise login
+    {
+      type: 'ifUrlContains',
+      text: '/login',
+      thenSteps: [
+        { type: 'fillInput', selector: '#email', value: 'user@example.com' },
+        { type: 'fillInput', selector: '#password', value: 'password123' },
+        { type: 'click', selector: '#login-button' },
+        { type: 'waitForSelector', selector: '#checkout-form', timeout: 5000 },
+      ],
+    },
 
     // Fill shipping info
     { type: 'fillInput', selector: '#name', value: 'John Doe' },
@@ -233,10 +350,19 @@ const scenario = {
     { type: 'check', selector: '#terms' },
     { type: 'click', selector: '#submit-order' },
 
-    // Verify success
-    { type: 'waitForSelector', selector: '.success-message', timeout: 5000 },
-    { type: 'assertText', selector: '.success-message', text: 'Order placed successfully!' },
-    { type: 'screenshot', name: 'order-confirmation' },
+    // Verify success or handle errors
+    {
+      type: 'ifVisible',
+      selector: '.success-message',
+      thenSteps: [
+        { type: 'assertText', selector: '.success-message', text: 'Order placed successfully!' },
+        { type: 'screenshot', name: 'order-confirmation' },
+      ],
+      elseSteps: [
+        { type: 'assertVisible', selector: '.error-message' },
+        { type: 'screenshot', name: 'checkout-error' },
+      ],
+    },
   ],
 };
 ```

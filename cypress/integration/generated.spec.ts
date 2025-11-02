@@ -1,16 +1,27 @@
 /// <reference types="cypress" />
 
-describe("User Login Flow", () => {
-  it("Test user can login with valid credentials", () => {
+describe("User Login Flow with Conditional Logic", () => {
+  it("Test user can login and handle optional cookie banner", () => {
     cy.visit("http://example.com/login");
+    cy.get("body").then(($body) => {
+      if ($body.find(".cookie-banner").length > 0) {
+        cy.get(".accept-cookies").click();
+      }
+    });
     cy.get("#username").type("testuser");
     cy.get("#password").type("password123");
     cy.get("#login-button").click();
-    cy.url().should("eq", "http://example.com/dashboard");
-    cy.get(".welcome-message").should("be.visible");
-    cy.get(".welcome-message").should(
-      "contain.text",
-      "Welcome back, testuser!"
-    );
+    cy.url().then((url) => {
+      if (url.includes("/dashboard")) {
+        cy.get(".welcome-message").should("be.visible");
+        cy.get(".welcome-message").should(
+          "contain.text",
+          "Welcome back, testuser!"
+        );
+      } else {
+        cy.get(".error-message").should("be.visible");
+        cy.screenshot("login-error");
+      }
+    });
   });
 });

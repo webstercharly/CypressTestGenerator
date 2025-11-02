@@ -35,6 +35,7 @@ This generates clean, executable Cypress code automatically.
 ## Features
 
 - **30+ Step Types**: Navigate, fill inputs, click, select, check, wait, assert visibility, assert text, and more
+- **Conditional Logic**: Support for if-then-else conditions (ifExists, ifVisible, ifContainsText, etc.)
 - **Comprehensive Validation**: Automatic validation of step types and required parameters
 - **Pretty Output**: Generated Cypress code is formatted with Prettier
 - **Extensible**: Add custom step types easily
@@ -84,6 +85,7 @@ See the complete list in [Usage Guide](docs/usage.md), including:
 - **Select/Check**: `select`, `check`, `uncheck`
 - **Wait**: `wait`, `waitForSelector`
 - **Assertions**: `assertVisible`, `assertText`, `assertUrl`, `assertEnabled`, and many more
+- **Conditionals**: `ifExists`, `ifVisible`, `ifContainsText`, `ifUrlContains`, `ifHasAttribute`, `ifHasClass`
 - **Utility**: `screenshot`, `scrollTo`, `custom`
 
 ## Use Cases
@@ -118,25 +120,57 @@ QA teams can create tests without knowing Cypress syntax - just fill out forms i
 - [Usage Guide](docs/usage.md) - Complete step reference and examples
 - [Building a UI](docs/usage.md#building-a-ui) - How to create a visual test builder
 
-## Example: E-commerce Checkout
+## Example: E-commerce Checkout with Conditionals
 
 ```typescript
 const scenario = {
   name: 'E-commerce Checkout',
-  description: 'Test complete purchase flow',
+  description: 'Test complete purchase flow with conditional logic',
   steps: [
     { type: 'navigate', url: 'https://shop.example.com/products/laptop' },
+
+    // Handle optional cookie banner
+    {
+      type: 'ifExists',
+      selector: '.cookie-banner',
+      thenSteps: [
+        { type: 'click', selector: '.accept-cookies' },
+      ],
+    },
+
     { type: 'click', selector: '.add-to-cart' },
     { type: 'assertVisible', selector: '.cart-notification' },
     { type: 'click', selector: '.checkout-button' },
+
+    // Check if login required
+    {
+      type: 'ifUrlContains',
+      text: '/login',
+      thenSteps: [
+        { type: 'fillInput', selector: '#email', value: 'user@example.com' },
+        { type: 'fillInput', selector: '#password', value: 'pass123' },
+        { type: 'click', selector: '#login-button' },
+      ],
+    },
+
     { type: 'fillInput', selector: '#name', value: 'John Doe' },
     { type: 'fillInput', selector: '#email', value: 'john@example.com' },
     { type: 'select', selector: '#country', value: 'USA' },
     { type: 'check', selector: '#terms' },
     { type: 'click', selector: '#submit-order' },
-    { type: 'waitForSelector', selector: '.success-message', timeout: 5000 },
-    { type: 'assertText', selector: '.success-message', text: 'Order placed!' },
-    { type: 'screenshot', name: 'order-confirmation' },
+
+    // Verify success or capture error
+    {
+      type: 'ifVisible',
+      selector: '.success-message',
+      thenSteps: [
+        { type: 'assertText', selector: '.success-message', text: 'Order placed!' },
+        { type: 'screenshot', name: 'order-confirmation' },
+      ],
+      elseSteps: [
+        { type: 'screenshot', name: 'checkout-error' },
+      ],
+    },
   ],
 };
 ```
