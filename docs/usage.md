@@ -289,6 +289,52 @@ Conditional steps allow you to execute actions based on runtime conditions. They
 - You can nest steps inside `thenSteps` and `elseSteps` arrays
 - `elseSteps` is optional - use only if you need else logic
 - Conditionals work correctly with Cypress's async nature
+- **Nested conditionals are fully supported** - nest as deep as needed!
+
+**Nested Conditional Example:**
+```typescript
+{
+  type: 'ifExists',
+  selector: '.cookie-banner',
+  thenSteps: [
+    { type: 'click', selector: '.accept-cookies' },
+
+    // NESTED conditional inside thenSteps
+    {
+      type: 'ifVisible',
+      selector: '.privacy-notice',
+      thenSteps: [
+        { type: 'click', selector: '.accept-privacy' },
+
+        // DOUBLE NESTED - 3 levels deep!
+        {
+          type: 'ifContainsText',
+          selector: '.confirmation',
+          text: 'Saved',
+          thenSteps: [
+            { type: 'screenshot', name: 'all-accepted' }
+          ]
+        }
+      ],
+      elseSteps: [
+        { type: 'screenshot', name: 'no-privacy-notice' }
+      ]
+    }
+  ],
+  elseSteps: [
+    // You can nest in else blocks too!
+    {
+      type: 'ifUrlContains',
+      text: '/exempt',
+      thenSteps: [
+        { type: 'assertVisible', selector: '.exempt-notice' }
+      ]
+    }
+  ]
+}
+```
+
+This generates properly nested Cypress code with `.then()` callbacks at each level.
 
 ### Utility Actions
 
