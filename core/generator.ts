@@ -1,34 +1,70 @@
-// core/generator.ts - Framework-agnostic test generator
+// core/generator.ts - Framework-agnostic test generator (v2 with DI and error handling)
 
-import * as fs from 'fs';
-import * as prettier from 'prettier';
-import { FrameworkAdapter } from './adapter';
+import { FrameworkAdapter } from './adapter.v2';
 import { Scenario } from './types';
-import { validateScenario } from './validator';
+import { validateScenario } from './validator.v2';
+import { FileSystem, RealFileSystem } from '../utils/filesystem';
+import { CodeFormatter, PrettierFormatter } from '../utils/formatter';
+import { Logger, ConsoleLogger } from '../utils/logger';
+import { GenerationError, IOError } from '../utils/errors';
+
+export interface TestGeneratorConfig {
+  adapter: FrameworkAdapter;
+  fileSystem?: FileSystem;
+  formatter?: CodeFormatter;
+  logger?: Logger;
+}
 
 /**
- * Test generator that works with any framework adapter
+ * Test generator with dependency injection for testability
  */
 export class TestGenerator {
-  constructor(private adapter: FrameworkAdapter) {}
+  private adapter: FrameworkAdapter;
+  private fileSystem: FileSystem;
+  private formatter: CodeFormatter;
+  private logger: Logger;
+
+  constructor(config: TestGeneratorConfig) {
+    this.adapter = config.adapter;
+    this.fileSystem = config.fileSystem || new RealFileSystem();
+    this.formatter = config.formatter || new PrettierFormatter(config.logger);
+    this.logger = config.logger || new ConsoleLogger();
+  }
 
   /**
    * Generate test code from a scenario
    */
   generate(scenario: Scenario): string {
-    // Validate using framework's supported step types
-    validateScenario(scenario, this.adapter.getSupportedStepTypes());
+    try {
+      this.logger.debug(`Generating test for scenario: ${scenario.name}`);
 
-    // Generate steps code
-    const stepsCode = this.adapter.generateStepsCode(scenario.steps, 4);
+      // Validate using framework's supported step types
+      validateScenario(scenario, this.adapter.getSupportedStepTypes());
 
-    // Wrap in test structure
-    const testCode = this.adapter.wrapInTestStructure(scenario, stepsCode);
+      // Generate steps code
+      const stepsCode = this.adapter.generateStepsCode(scenario.steps, 4);
 
-    // Add header
-    const fullCode = this.adapter.getFileHeader() + testCode;
+      // Wrap in test structure
+      const testCode = this.adapter.wrapInTestStructure(scenario, stepsCode);
 
-    return fullCode;
+      // Add header
+      const fullCode = this.adapter.getFileHeader() + testCode;
+
+      // Format code
+      const formattedCode = this.formatter.format(fullCode);
+
+      this.logger.info(`Generated ${this.adapter.name} test successfully`);
+
+      return formattedCode;
+    } catch (error) {
+      this.logger.error(`Failed to generate test: ${error.message}`);
+
+      throw new GenerationError(
+        `Failed to generate ${this.adapter.name} test: ${error.message}`,
+        'GENERATION_FAILED',
+        { scenario: scenario.name, originalError: error }
+      );
+    }
   }
 
   /**
@@ -36,12 +72,15 @@ export class TestGenerator {
    */
   generateFile(scenario: Scenario, outputPath: string): void {
     try {
+      this.logger.info(`Generating ${this.adapter.name} test file: ${outputPath}`);
+
       const code = this.generate(scenario);
-      const formattedCode = prettier.format(code, { parser: 'babel' });
-      fs.writeFileSync(outputPath, formattedCode);
-      console.log(`✓ ${this.adapter.name} test file written to ${outputPath}`);
+
+      this.fileSystem.writeFile(outputPath, code);
+
+      this.logger.info(`✓ ${this.adapter.name} test file written to ${outputPath}`);
     } catch (error) {
-      console.error(`✗ Error generating ${this.adapter.name} test: ${error.message}`);
+      this.logger.error(`✗ Error writing test file: ${error.message}`);
       throw error;
     }
   }
